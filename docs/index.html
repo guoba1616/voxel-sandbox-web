@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minecraft 网页版</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Noto+Sans+SC:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root { --ui: 'VT323', 'Noto Sans SC', 'Microsoft YaHei', monospace; }
+* { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: var(--ui); color: #fff; font-size: 20px; }
+canvas#game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+.hidden { display: none !important; }
+.fill { position: fixed; inset: 0; }
+.txt-shadow { text-shadow: 2px 2px 0 #3f3f3f; }
+
+/* ---------- buttons / panels ---------- */
+.mc-btn {
+    display: block; width: 100%; padding: 8px 6px 7px; margin: 0; font: inherit; font-size: 24px; color: #e0e0e0; text-align: center;
+    background: #727272; border: 2px solid #000; cursor: pointer;
+    box-shadow: inset 3px 3px 0 #a8a8a8, inset -3px -3px 0 #4a4a4a;
+    text-shadow: 2px 2px 0 #3a3a3a;
+}
+.mc-btn:hover { background: #7a86c2; color: #ffffa0; box-shadow: inset 3px 3px 0 #b4bfff, inset -3px -3px 0 #4a5390; }
+.mc-btn:active { transform: translateY(1px); }
+.menu { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; z-index: 50; }
+.menu .col { width: min(440px, 92vw); display: flex; flex-direction: column; gap: 10px; }
+.dim { background: rgba(0,0,0,.55); }
+.panel-title { font-size: 30px; text-align: center; margin-bottom: 8px; text-shadow: 2px 2px 0 #3f3f3f; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+input[type=text] { width: 100%; font: inherit; font-size: 22px; padding: 6px 8px; background: #000; color: #ddd; border: 2px solid #a0a0a0; outline: none; user-select: text; -webkit-user-select: text; }
+.opt { display: flex; align-items: center; gap: 10px; font-size: 22px; }
+.opt label { width: 130px; text-align: right; text-shadow: 2px 2px 0 #3f3f3f; }
+.opt input[type=range] { flex: 1; accent-color: #8a8fd0; }
+.opt span { width: 70px; color: #ffff80; text-shadow: 2px 2px 0 #3f3f3f; }
+
+/* ---------- title screen ---------- */
+#title { background: radial-gradient(ellipse at center, rgba(0,0,0,0) 40%, rgba(0,0,0,.45) 100%); padding-top: 6vh; }
+.logo { position: relative; margin-bottom: 5vh; text-align: center; }
+.logo h1 {
+    margin: 0; font-size: clamp(54px, 11vw, 120px); letter-spacing: 6px; line-height: 1; font-weight: 400; color: #bdbdbd;
+    text-shadow: 0 2px 0 #9a9a9a, 0 4px 0 #7f7f7f, 0 6px 0 #666, 0 8px 0 #4d4d4d, 0 10px 0 #333, 0 12px 0 #222, 0 14px 8px rgba(0,0,0,.6),
+        -3px 0 0 #1a1a1a, 3px 0 0 #1a1a1a, 0 -3px 0 #1a1a1a;
+}
+.logo .edition { font-size: 26px; color: #ddd; margin-top: 16px; text-shadow: 2px 2px 0 #333; letter-spacing: 3px; }
+.splash { position: absolute; right: -4vw; bottom: 18px; color: #ffff00; font-size: 28px; text-shadow: 2px 2px 0 #3f3f00; transform: rotate(-18deg); animation: pulse .6s infinite alternate ease-in-out; white-space: nowrap; pointer-events: none; }
+@keyframes pulse { from { transform: rotate(-18deg) scale(1); } to { transform: rotate(-18deg) scale(1.1); } }
+.foot { position: fixed; left: 8px; right: 8px; bottom: 6px; display: flex; justify-content: space-between; font-size: 18px; text-shadow: 2px 2px 0 #333; z-index: 51; pointer-events: none; }
+#save-info { color: #aaa; text-align: center; font-size: 18px; text-shadow: 1px 1px 0 #000; }
+
+/* ---------- loading ---------- */
+#loading { z-index: 60; background: #2b1d12 repeating-linear-gradient(45deg, #3a2816 0 16px, #2f2012 16px 32px); justify-content: center; }
+.bar { width: min(420px, 80vw); height: 14px; background: #000; border: 2px solid #777; margin-top: 18px; }
+.bar > div { height: 100%; background: #6aa84f; width: 0; }
+
+/* ---------- HUD ---------- */
+#hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+#crosshair { position: fixed; left: 50%; top: 50%; width: 22px; height: 22px; transform: translate(-50%, -50%); mix-blend-mode: difference; }
+#crosshair::before, #crosshair::after { content: ''; position: absolute; background: #fff; }
+#crosshair::before { left: 10px; top: 1px; width: 2px; height: 20px; }
+#crosshair::after { left: 1px; top: 10px; width: 20px; height: 2px; }
+#hudbar { position: fixed; left: 50%; bottom: 6px; transform: translateX(-50%); width: 364px; }
+#hotbar { position: relative; display: flex; padding: 2px; background: rgba(40,40,40,.62); border: 2px solid #111; width: 364px; height: 48px; }
+#hotbar-sel { position: absolute; top: -1px; width: 44px; height: 44px; border: 4px solid #fff; box-shadow: 0 0 0 2px #000, inset 0 0 0 2px #000; pointer-events: none; z-index: 2; }
+.slot { position: relative; width: 36px; height: 36px; background: #8b8b8b; border: 2px solid; border-color: #373737 #fff #fff #373737; flex: none; }
+.slot:hover { background: #b0b0b0; }
+.slot.hb { background: transparent; border: 0; margin: 2px; width: 36px; height: 36px; }
+.slot .ico { position: absolute; left: 0; top: 0; width: 32px; height: 32px; image-rendering: pixelated; pointer-events: none; }
+.slot.hb .ico { left: 2px; top: 2px; }
+.slot .count { position: absolute; right: 1px; bottom: -2px; font-size: 22px; line-height: 22px; color: #fff; text-shadow: 2px 2px 0 #3f3f3f; pointer-events: none; }
+.slot .durbar { position: absolute; left: 3px; right: 3px; bottom: 1px; height: 3px; background: #000; pointer-events: none; }
+.slot .durbar > div { height: 100%; }
+.slot .trash-ico { position: absolute; inset: 0; font-size: 22px; text-align: center; line-height: 32px; opacity: .8; pointer-events: none; }
+#survival-hud { position: absolute; left: 0; right: 0; bottom: 54px; height: 54px; }
+#hearts, #foodbar, #bubbles { position: absolute; display: flex; gap: 0; }
+#hearts { left: 2px; bottom: 16px; }
+#foodbar { right: 2px; bottom: 16px; }
+#bubbles { right: 2px; bottom: 36px; }
+.hud-ico { width: 18px; height: 18px; image-rendering: pixelated; margin-right: 2px; }
+#foodbar .hud-ico, #bubbles .hud-ico { margin-right: 0; margin-left: 2px; }
+#xpbar { position: absolute; left: 0; right: 0; bottom: 0; height: 10px; background: #1a2a12; border: 2px solid #000; }
+#xp-fill { height: 100%; width: 0; background: #7cd62a; }
+#xp-level { position: absolute; left: 0; right: 0; bottom: 8px; text-align: center; color: #80ff20; font-size: 24px; text-shadow: 2px 0 #000, -2px 0 #000, 0 2px #000, 0 -2px #000; }
+#item-name { position: fixed; left: 0; right: 0; bottom: 118px; text-align: center; font-size: 22px; text-shadow: 2px 2px 0 #3f3f3f; opacity: 0; }
+body.creative #item-name { bottom: 64px; }
+#toast { position: fixed; left: 50%; top: 56px; transform: translateX(-50%); padding: 4px 14px; background: rgba(0,0,0,.6); font-size: 22px; opacity: 0; transition: opacity .3s; text-shadow: 2px 2px 0 #3f3f3f; }
+#toast.show { opacity: 1; }
+#clickhint { position: fixed; left: 50%; top: 38%; transform: translateX(-50%); z-index: 12; padding: 6px 18px; background: rgba(0,0,0,.6); font-size: 26px; text-shadow: 2px 2px 0 #3f3f3f; pointer-events: none; }
+#debug { position: fixed; left: 6px; top: 6px; font-size: 19px; line-height: 21px; white-space: pre; background: rgba(60,60,60,.42); padding: 2px 6px; z-index: 12; text-shadow: 1px 1px 0 #333; pointer-events: none; }
+.overlay { position: fixed; inset: 0; pointer-events: none; z-index: 5; display: none; }
+#water-overlay { background: rgba(28,70,170,.42); }
+#lava-overlay { background: rgba(230,80,10,.75); }
+#fire-overlay { background: linear-gradient(to top, rgba(255,140,20,.55), rgba(255,100,0,0) 38%); }
+#hurt-overlay { display: block; opacity: 0; background: radial-gradient(ellipse at center, rgba(160,0,0,0) 40%, rgba(190,0,0,.75) 100%); transition: opacity .1s; }
+
+/* ---------- containers ---------- */
+#gui { position: fixed; inset: 0; z-index: 30; background: rgba(0,0,0,.52); display: flex; align-items: center; justify-content: center; }
+.gui-panel { background: #c6c6c6; border: 3px solid #000; box-shadow: inset 3px 3px 0 #fff, inset -3px -3px 0 #555; padding: 12px 14px 12px; color: #404040; font-size: 22px; }
+.gui-title { text-shadow: none; margin: 0 0 6px; }
+.gui-label { margin: 8px 0 3px; }
+.slot-grid { display: grid; gap: 0; width: max-content; }
+.craft-row { display: flex; align-items: center; gap: 16px; margin: 4px 0 2px; justify-content: center; }
+.player-preview { width: 120px; height: 160px; background: #000; border: 2px solid; border-color: #373737 #fff #fff #373737; margin-right: 6px; }
+.player-preview canvas { width: 120px; height: 160px; display: block; }
+.arrow { font-size: 36px; color: #6a6a6a; }
+.furnace-row { display: flex; align-items: center; justify-content: center; gap: 22px; margin: 8px 0; }
+.furnace-left { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.flame { width: 28px; height: 28px; background: #555; border: 2px solid #333; position: relative; overflow: hidden; }
+#flame-fill { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(to top, #e05a10, #ffcf30); height: 0; }
+.prog { width: 50px; height: 16px; background: #555; border: 2px solid #333; }
+#prog-fill { height: 100%; width: 0; background: #fff; }
+.creative-grid { display: grid; grid-template-columns: repeat(9, 36px); max-height: 218px; overflow-y: auto; margin-bottom: 6px; background: #8b8b8b; border: 2px solid; border-color: #373737 #fff #fff #373737; }
+.trash-row { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-bottom: 4px; }
+#cursor-item { position: fixed; z-index: 100; width: 32px; height: 32px; pointer-events: none; display: none; }
+#cursor-item .ico { position: absolute; left: 0; top: 0; width: 32px; height: 32px; image-rendering: pixelated; }
+#tooltip { position: fixed; z-index: 101; display: none; background: rgba(16,0,16,.92); border: 2px solid #28007f; padding: 3px 8px; font-size: 22px; white-space: pre; pointer-events: none; text-shadow: 2px 2px 0 #3f3f3f; }
+
+/* ---------- death ---------- */
+#death { z-index: 45; background: rgba(110,0,0,.55); justify-content: center; }
+#death h2 { font-size: 64px; margin: 0 0 6px; text-shadow: 4px 4px 0 #3f3f3f; font-weight: 400; }
+#death .sub { font-size: 26px; margin-bottom: 24px; }
+#pause { z-index: 45; justify-content: center; }
+#options { z-index: 46; justify-content: center; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="water-overlay" class="overlay"></div>
+<div id="lava-overlay" class="overlay"></div>
+<div id="fire-overlay" class="overlay"></div>
+<div id="hurt-overlay" class="overlay"></div>
+
+<div id="hud" class="hidden">
+    <div id="crosshair"></div>
+    <div id="hudbar">
+        <div id="survival-hud">
+            <div id="bubbles"></div>
+            <div id="hearts"></div>
+            <div id="foodbar"></div>
+            <div id="xpbar"><div id="xp-fill"></div></div>
+            <div id="xp-level"></div>
+        </div>
+        <div id="hotbar"></div>
+    </div>
+    <div id="item-name"></div>
+</div>
+<div id="toast"></div>
+<div id="clickhint" class="hidden">点击画面以控制视角</div>
+<div id="debug" class="hidden"></div>
+
+<div id="gui" class="hidden"></div>
+<div id="cursor-item"></div>
+<div id="tooltip"></div>
+
+<!-- Title screen -->
+<div id="title" class="menu">
+    <div class="logo">
+        <h1>MINECRAFT</h1>
+        <div class="edition">网页版 · 仿 Java 版 1.21</div>
+        <div class="splash" id="splash">体素万岁!</div>
+    </div>
+    <div id="titlemenu" class="col">
+        <button id="btn-single" class="mc-btn">单人游戏</button>
+        <button id="btn-continue" class="mc-btn hidden">继续游戏</button>
+        <button id="btn-options-title" class="mc-btn">选项...</button>
+        <button id="btn-delete" class="mc-btn hidden" style="font-size:18px">删除存档</button>
+        <div id="save-info"></div>
+    </div>
+    <div id="worldmenu" class="col hidden">
+        <div class="panel-title">创建新的世界</div>
+        <div>世界种子 (留空则随机)</div>
+        <input id="seed-input" type="text" placeholder="例如: 12345 或 minecraft" autocomplete="off">
+        <button id="btn-mode" class="mc-btn">游戏模式: 生存</button>
+        <button id="btn-peace" class="mc-btn">难度: 普通</button>
+        <button id="btn-create" class="mc-btn">创建新的世界</button>
+        <button id="btn-world-back" class="mc-btn">取消</button>
+    </div>
+    <div class="foot"><span>Minecraft 网页版 (非官方复刻)</span><span>WASD 移动 · 空格 跳跃 · E 物品栏 · F3 调试 · F5 视角</span></div>
+</div>
+
+<!-- Loading -->
+<div id="loading" class="menu hidden">
+    <div style="font-size:34px;text-shadow:2px 2px 0 #333" id="loading-text">正在生成地形…</div>
+    <div class="bar"><div id="loading-fill"></div></div>
+</div>
+
+<!-- Pause -->
+<div id="pause" class="menu dim hidden">
+    <div class="col">
+        <div class="panel-title">游戏菜单</div>
+        <button id="btn-resume" class="mc-btn">回到游戏</button>
+        <button id="btn-mode-pause" class="mc-btn">游戏模式: 生存</button>
+        <button id="btn-options" class="mc-btn">选项...</button>
+        <button id="btn-quit" class="mc-btn">保存并退出到标题界面</button>
+    </div>
+</div>
+
+<!-- Options -->
+<div id="options" class="menu dim hidden">
+    <div class="col">
+        <div class="panel-title">选项</div>
+        <div class="opt"><label>渲染距离</label><input id="opt-rd" type="range" min="3" max="12" step="1"><span id="opt-rd-v"></span></div>
+        <div class="opt"><label>视野 (FOV)</label><input id="opt-fov" type="range" min="50" max="110" step="1"><span id="opt-fov-v"></span></div>
+        <div class="opt"><label>鼠标灵敏度</label><input id="opt-sens" type="range" min="0.2" max="2.5" step="0.1"><span id="opt-sens-v"></span></div>
+        <div class="opt"><label>音量</label><input id="opt-vol" type="range" min="0" max="1" step="0.05"><span id="opt-vol-v"></span></div>
+        <div class="opt"><label>亮度</label><input id="opt-bright" type="range" min="0" max="2" step="1"><span id="opt-bright-v"></span></div>
+        <button id="btn-options-back" class="mc-btn" style="margin-top:10px">完成</button>
+    </div>
+</div>
+
+<!-- Death -->
+<div id="death" class="menu hidden">
+    <h2>你死了!</h2>
+    <div class="sub" id="death-msg"></div>
+    <div class="sub" id="death-score"></div>
+    <div class="col">
+        <button id="btn-respawn" class="mc-btn">重生</button>
+        <button id="btn-death-title" class="mc-btn">退出到标题界面</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="js/noise.js"></script>
+<script src="js/blocks.js"></script>
+<script src="js/textures.js"></script>
+<script src="js/sound.js"></script>
+<script src="js/world.js"></script>
+<script src="js/entities.js"></script>
+<script src="js/inventory.js"></script>
+<script src="js/player.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
