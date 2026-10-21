@@ -1,5 +1,5 @@
 // ============================================================================
-// sound.js — synthesised Minecraft-style sound effects (noise bursts + tones)
+// sound.js — synthesised block-game sound effects (noise bursts + tones)
 // ============================================================================
 'use strict';
 

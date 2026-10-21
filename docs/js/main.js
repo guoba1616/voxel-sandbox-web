@@ -888,7 +888,7 @@ const Game = {
         const hh = Math.floor(((this.timeOfDay * 24 + 6) % 24)), mm = Math.floor((((this.timeOfDay * 24 + 6) % 1) * 60));
         let meshed = 0; world.chunks.forEach(c => { if (c.meshed) meshed++; });
         const lines = [
-            `Minecraft Web 1.21 (仿原版)   ${this.fps} fps`,
+            `体素沙盒 Web   ${this.fps} fps`,
             `XYZ: ${P.x.toFixed(3)} / ${P.y.toFixed(3)} / ${P.z.toFixed(3)}`,
             `方块: ${bx} ${by} ${bz}   区块: ${bx >> 4} ${bz >> 4}`,
             `朝向: ${face}   (${(Player.yaw * 180 / Math.PI % 360).toFixed(1)} / ${(Player.pitch * 180 / Math.PI).toFixed(1)})`,
